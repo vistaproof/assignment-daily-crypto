@@ -1,1 +1,1 @@
-# assignment-daily-crypto
+# Book Management App - Full Stack Developer Home Assignment
