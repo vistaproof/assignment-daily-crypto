@@ -13,6 +13,8 @@ const AddBookPage: React.FC = () => {
     title: '',
     author: '',
     description: '',
+    isbn: '',
+    published_date: '',
     cover_image: '',
     genre_id: 1,
     genre_name: ''
@@ -23,7 +25,7 @@ const AddBookPage: React.FC = () => {
       try {
         const response = await bookService.getGenres();
         if (response.success && response.data) {
-          const genresData = response.data;
+          const genresData = response.data as Genre[];
           setGenres(genresData);
           // Set initial genre if available
           if (genresData.length > 0) {
@@ -41,6 +43,51 @@ const AddBookPage: React.FC = () => {
 
     fetchGenres();
   }, []);
+
+  const validateImage = (file: File): boolean => {
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file');
+      return false;
+    }
+
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image size should be less than 5MB');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!validateImage(file)) {
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Convert file to base64
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setFormData(prev => ({
+          ...prev,
+          cover_image: base64String
+        }));
+        setLoading(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      setError('Failed to process image file');
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,6 +174,37 @@ const AddBookPage: React.FC = () => {
             </div>
 
             <div>
+              <label htmlFor="isbn" className="block text-sm font-medium text-gray-700">
+                ISBN
+              </label>
+              <input
+                type="text"
+                id="isbn"
+                name="isbn"
+                value={formData.isbn}
+                onChange={handleChange}
+                required
+                className="mt-1 block w-full px-4 py-3 rounded-lg border border-gray-300 shadow-sm focus:border-purple-500 focus:ring-4 focus:ring-purple-100 focus:ring-offset-0 sm:text-sm transition-colors duration-200"
+                placeholder="Enter ISBN"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="published_date" className="block text-sm font-medium text-gray-700">
+                Publication Date
+              </label>
+              <input
+                type="date"
+                id="published_date"
+                name="published_date"
+                value={formData.published_date}
+                onChange={handleChange}
+                required
+                className="mt-1 block w-full px-4 py-3 rounded-lg border border-gray-300 shadow-sm focus:border-purple-500 focus:ring-4 focus:ring-purple-100 focus:ring-offset-0 sm:text-sm transition-colors duration-200"
+              />
+            </div>
+
+            <div>
               <label htmlFor="description" className="block text-sm font-medium text-gray-700">
                 Description
               </label>
@@ -143,19 +221,28 @@ const AddBookPage: React.FC = () => {
             </div>
 
             <div>
-              <label htmlFor="cover_image" className="block text-sm font-medium text-gray-700">
-                Cover Image URL
+              <label className="block text-sm font-medium text-gray-700">
+                Cover Image
               </label>
-              <input
-                type="url"
-                id="cover_image"
-                name="cover_image"
-                value={formData.cover_image}
-                onChange={handleChange}
-                required
-                className="mt-1 block w-full px-4 py-3 rounded-lg border border-gray-300 shadow-sm focus:border-purple-500 focus:ring-4 focus:ring-purple-100 focus:ring-offset-0 sm:text-sm transition-colors duration-200"
-                placeholder="Enter cover image URL"
-              />
+              <div className="mt-1 flex items-center space-x-4">
+                {formData.cover_image && (
+                  <img
+                    src={formData.cover_image}
+                    alt="Book cover"
+                    className="h-32 w-24 object-cover rounded"
+                  />
+                )}
+                <label className="cursor-pointer px-4 py-2 text-sm text-purple-600 bg-white border border-purple-600 rounded-md hover:bg-purple-50">
+                  <span>{loading ? 'Uploading...' : 'Upload Image'}</span>
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    disabled={loading}
+                  />
+                </label>
+              </div>
             </div>
 
             <div>
@@ -179,57 +266,24 @@ const AddBookPage: React.FC = () => {
             </div>
 
             {error && (
-              <div className="rounded-md bg-red-50 p-4">
-                <div className="flex">
-                  <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div className="ml-3">
-                    <h3 className="text-sm font-medium text-red-800">Error</h3>
-                    <div className="mt-2 text-sm text-red-700">
-                      <p>{error}</p>
-                    </div>
-                  </div>
-                </div>
+              <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+                <p className="text-sm text-red-600">{error}</p>
               </div>
             )}
 
             {success && (
-              <div className="rounded-md bg-green-50 p-4">
-                <div className="flex">
-                  <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div className="ml-3">
-                    <h3 className="text-sm font-medium text-green-800">Success</h3>
-                    <div className="mt-2 text-sm text-green-700">
-                      <p>Book added successfully! Redirecting to profile...</p>
-                    </div>
-                  </div>
-                </div>
+              <div className="p-4 bg-green-50 border border-green-200 rounded-md">
+                <p className="text-sm text-green-600">Book added successfully!</p>
               </div>
             )}
 
-            <div className="flex justify-end space-x-3">
-              <button
-                type="button"
-                onClick={() => navigate('/profile')}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-4 py-2 text-sm font-medium text-white bg-purple-600 border border-transparent rounded-md shadow-sm hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? 'Adding...' : 'Add Book'}
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 px-4 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Adding...' : 'Add Book'}
+            </button>
           </form>
         </div>
       </div>

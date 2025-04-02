@@ -21,10 +21,9 @@ export interface IBook {
   published_date: Date;
   genre_id: number;
   genre_name?: string;
-  user_id?: number;
+  user_id: number;
   creator_id?: string;
   description?: string;
-  price?: number;
   cover_image?: string;
   created_at: Date;
   updated_at: Date;

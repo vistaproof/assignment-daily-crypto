@@ -3,11 +3,20 @@ import { IBook } from '../types';
 
 export const createBook = async (book: Omit<IBook, 'id' | 'created_at' | 'updated_at'>): Promise<IBook> => {
   const query = `
-    INSERT INTO books (title, author, isbn, published_date, genre_id)
-    VALUES ($1, $2, $3, $4, $5)
+    INSERT INTO books (title, author, isbn, published_date, genre_id, user_id, description, cover_image)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     RETURNING *
   `;
-  const values = [book.title, book.author, book.isbn, book.published_date, book.genre_id];
+  const values = [
+    book.title, 
+    book.author, 
+    book.isbn, 
+    book.published_date, 
+    book.genre_id,
+    book.user_id,
+    book.description,
+    book.cover_image
+  ];
   const result = await pool.query(query, values);
   return result.rows[0];
 };

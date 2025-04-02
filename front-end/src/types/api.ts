@@ -14,9 +14,12 @@ export interface Book {
   title: string;
   author: string;
   description: string;
+  isbn: string;
+  published_date: string;
   cover_image: string;
   genre_id: number;
   genre_name: string;
+  user_id: number;
   created_at: string;
   updated_at: string;
 }

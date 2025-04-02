@@ -152,9 +152,8 @@ export const getBook = async (req: Request, res: Response): Promise<void> => {
 // Create a new book
 export const createBook = async (req: IAuthRequest, res: Response): Promise<void> => {
   try {
-    const { title, author, isbn, published_date, genre_id, description, price } = req.body;
+    const { title, author, isbn, published_date, genre_id, description, cover_image } = req.body;
     const userId = req.user?.id;
-    const coverImage = req.file;
 
     if (!userId) {
       res.status(401).json({ message: 'User not authenticated' });
@@ -172,9 +171,29 @@ export const createBook = async (req: IAuthRequest, res: Response): Promise<void
       return;
     }
 
+    // Handle base64 image
+    let coverImagePath = null;
+    if (cover_image) {
+      const base64Data = cover_image.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+      const filename = `book-${Date.now()}.${cover_image.split(';')[0].split('/')[1]}`;
+      const filepath = path.join('uploads/books', filename);
+      
+      // Ensure directory exists
+      if (!fs.existsSync('uploads/books')) {
+        fs.mkdirSync('uploads/books', { recursive: true });
+      }
+      
+      fs.writeFileSync(filepath, buffer);
+      coverImagePath = filename;
+    }
+
+    // Reset the sequence if needed
+    await pool.query('SELECT setval(\'books_id_seq\', (SELECT MAX(id) FROM books), true)');
+
     const result = await pool.query(
-      'INSERT INTO books (title, author, isbn, published_date, genre_id, user_id, description, price, cover_image) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
-      [title, author, isbn, published_date, genre_id, userId, description, price, coverImage?.filename]
+      'INSERT INTO books (title, author, isbn, published_date, genre_id, user_id, description, cover_image) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+      [title, author, isbn, published_date, genre_id, userId, description, coverImagePath]
     );
 
     res.status(201).json({

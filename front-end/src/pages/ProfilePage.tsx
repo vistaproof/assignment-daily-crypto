@@ -176,7 +176,7 @@ const ProfilePage: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {user.books.map((book) => (
+          {user.books?.map((book) => (
             <div key={book.id} className="bg-white rounded-lg shadow-md overflow-hidden">
               <img
                 src={book.cover_image}
