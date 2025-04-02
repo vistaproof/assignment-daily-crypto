@@ -60,7 +60,7 @@ export const getAllBooks = async (req: Request, res: Response): Promise<void> =>
     let paramCount = 1;
 
     if (search) {
-      query += ` AND (b.title ILIKE $${paramCount} OR b.author ILIKE $${paramCount})`;
+      query += ` AND (LOWER(b.title) LIKE LOWER($${paramCount}) OR LOWER(b.author) LIKE LOWER($${paramCount}))`;
       queryParams.push(`%${search}%`);
       paramCount++;
     }
@@ -311,5 +311,30 @@ export const deleteBook = async (req: IAuthRequest, res: Response): Promise<void
   } catch (error) {
     console.error('Delete book error:', error);
     res.status(500).json({ message: 'Error deleting book' });
+  }
+};
+
+export const getBooks = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { search } = req.query;
+    let query = 'SELECT b.*, g.name as genre_name FROM books b LEFT JOIN genres g ON b.genre_id = g.id';
+    const params: any[] = [];
+
+    if (search) {
+      // Optimized search query with ILIKE for case-insensitive search
+      query += ' WHERE LOWER(b.title) LIKE LOWER($1) OR LOWER(b.author) LIKE LOWER($1)';
+      params.push(`%${search}%`);
+      
+      // Add index hint if available
+      query += ' /*+ INDEX(b idx_books_title_author) */';
+    }
+
+    query += ' ORDER BY b.created_at DESC LIMIT 50'; // Limit results for faster response
+
+    const result = await pool.query(query, params);
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('Error fetching books:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch books' });
   }
 }; 
