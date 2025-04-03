@@ -243,16 +243,18 @@ const ProfilePage: React.FC = () => {
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {currentBooks.map((book) => (
-                  <div key={book.id} className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden transform transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
-                    <div className="aspect-w-3 aspect-h-4 relative group">
+                  <div key={book.id} className="bg-white rounded-xl shadow-lg overflow-hidden flex flex-col transform transition-all duration-300 hover:shadow-xl hover:-translate-y-2">
+                    <Link 
+                      to={`/book/${book.id}`}
+                      className="relative pb-[140%] overflow-hidden w-full text-left focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 rounded-t-xl"
+                    >
                       <img
                         src={book.cover_image || `https://placehold.co/400x400/e2e8f0/1e293b?text=${encodeURIComponent(book.title)}`}
                         alt={book.title}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 hover:scale-110"
                       />
-                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300"></div>
-                    </div>
-                    <div className="p-4">
+                    </Link>
+                    <div className="p-5 flex flex-col flex-grow">
                       <h3 className="text-lg font-semibold text-gray-900 mb-1 truncate">{book.title}</h3>
                       <p className="text-sm text-gray-600 mb-2">{book.author}</p>
                       <div className="flex justify-between items-center">
