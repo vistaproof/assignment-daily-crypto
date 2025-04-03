@@ -16,11 +16,17 @@ class BookService {
     }
   }
 
-  async getBooks(params?: { search?: string }): Promise<ApiResponse<Book[]>> {
+  async getBooks(params?: { search?: string; page?: number; limit?: number }): Promise<ApiResponse<Book[]>> {
     try {
       const queryParams = new URLSearchParams();
       if (params?.search) {
         queryParams.append('search', params.search);
+      }
+      if (params?.page) {
+        queryParams.append('page', params.page.toString());
+      }
+      if (params?.limit) {
+        queryParams.append('limit', params.limit.toString());
       }
       const response = await api.get(`${API_ENDPOINTS.BOOKS}?${queryParams.toString()}`);
       return response.data as ApiResponse<Book[]>;

@@ -48,6 +48,10 @@ class AuthService {
       localStorage.setItem('token', result.token);
       // Store user information in localStorage
       localStorage.setItem('user', JSON.stringify(result.user));
+      
+      // Dispatch a custom event to notify other components about the login
+      const loginEvent = new CustomEvent('userLogin', { detail: result.user });
+      window.dispatchEvent(loginEvent);
     }
 
     return result;
