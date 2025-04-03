@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { bookService } from '../services/bookService';
@@ -96,6 +96,21 @@ const HomePage: React.FC = () => {
     if (!query.trim()) {
       setSearchResults([]);
       setIsSearching(false);
+      // Fetch the first page of books when search is cleared
+      try {
+        const response = await bookService.getBooks({ 
+          page: currentPage,
+          limit: booksPerPage
+        });
+        if (response.success && response.data) {
+          setBooks(response.data);
+          if (response.count !== undefined) {
+            setTotalBooks(response.count);
+          }
+        }
+      } catch (err) {
+        setError('Failed to load books. Please try again later.');
+      }
       return;
     }
 
@@ -106,8 +121,11 @@ const HomePage: React.FC = () => {
         page: currentPage,
         limit: booksPerPage
       });
+      
       if (response.success && response.data) {
         setSearchResults(response.data);
+        
+        // Update total books count from the response
         if (response.count !== undefined) {
           setTotalBooks(response.count);
         }
@@ -119,23 +137,23 @@ const HomePage: React.FC = () => {
     }
   }, [currentPage, booksPerPage]);
 
+  // Use a ref to store the timeout ID
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setSearchQuery(query);
     
-    if (!query.trim()) {
-      setSearchResults([]);
-      setIsSearching(false);
-      return;
+    // Clear the previous timeout if it exists
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
     }
 
     // Debounce the search to avoid too many API calls
     setIsSearching(true);
-    const timeoutId = setTimeout(() => {
+    searchTimeoutRef.current = setTimeout(() => {
       performSearch(query);
-    }, 150); // Reduced from 300ms to 150ms for faster response
-
-    return () => clearTimeout(timeoutId);
+    }, 300); // Debounce time
   };
 
   const handleSearch = async (e: React.FormEvent) => {
@@ -147,6 +165,22 @@ const HomePage: React.FC = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery]);
+
+  // Update search results when page changes
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      performSearch(searchQuery);
+    }
+  }, [currentPage, performSearch, searchQuery]);
+
+  // Clean up the timeout when the component unmounts
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Determine which books to display
   const booksToDisplay = searchQuery ? searchResults : books;
