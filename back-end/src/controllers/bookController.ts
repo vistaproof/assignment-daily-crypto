@@ -172,20 +172,13 @@ export const createBook = async (req: IAuthRequest, res: Response): Promise<void
     }
 
     // Handle base64 image
-    let coverImagePath = null;
+    let coverImagePath = cover_image;
     if (cover_image) {
-      const base64Data = cover_image.replace(/^data:image\/\w+;base64,/, '');
-      const buffer = Buffer.from(base64Data, 'base64');
-      const filename = `book-${Date.now()}.${cover_image.split(';')[0].split('/')[1]}`;
-      const filepath = path.join('uploads/books', filename);
-      
-      // Ensure directory exists
-      if (!fs.existsSync('uploads/books')) {
-        fs.mkdirSync('uploads/books', { recursive: true });
+      // Validate base64 string
+      if (!cover_image.startsWith('data:image/')) {
+        res.status(400).json({ message: 'Invalid image format' });
+        return;
       }
-      
-      fs.writeFileSync(filepath, buffer);
-      coverImagePath = filename;
     }
 
     // Reset the sequence if needed
@@ -210,9 +203,8 @@ export const createBook = async (req: IAuthRequest, res: Response): Promise<void
 export const updateBook = async (req: IAuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { title, author, isbn, published_date, genre_id, description, price } = req.body;
+    const { title, author, isbn, published_date, genre_id, description, cover_image } = req.body;
     const userId = req.user?.id;
-    const coverImage = req.file;
 
     if (!userId) {
       res.status(401).json({ message: 'User not authenticated' });
@@ -249,17 +241,19 @@ export const updateBook = async (req: IAuthRequest, res: Response): Promise<void
       return;
     }
 
-    // Delete old cover image if new one is uploaded
-    if (coverImage && book.cover_image) {
-      const oldImagePath = path.join('uploads/books', book.cover_image);
-      if (fs.existsSync(oldImagePath)) {
-        fs.unlinkSync(oldImagePath);
+    // Handle base64 image
+    let coverImagePath = cover_image;
+    if (cover_image) {
+      // Validate base64 string
+      if (!cover_image.startsWith('data:image/')) {
+        res.status(400).json({ message: 'Invalid image format' });
+        return;
       }
     }
 
     const result = await pool.query(
-      'UPDATE books SET title = $1, author = $2, isbn = $3, published_date = $4, genre_id = $5, description = $6, price = $7, cover_image = $8, updated_at = CURRENT_TIMESTAMP WHERE id = $9 RETURNING *',
-      [title, author, isbn, published_date, genre_id, description, price, coverImage?.filename || book.cover_image, id]
+      'UPDATE books SET title = $1, author = $2, isbn = $3, published_date = $4, genre_id = $5, description = $6, cover_image = $7, updated_at = CURRENT_TIMESTAMP WHERE id = $8 RETURNING *',
+      [title, author, isbn, published_date, genre_id, description, coverImagePath, id]
     );
 
     res.status(200).json({

@@ -1,12 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
+import { User } from '../types/api';
 
 const Navbar: React.FC = () => {
   const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -14,25 +18,49 @@ const Navbar: React.FC = () => {
     };
 
     const checkAuth = () => {
-      setIsAuthenticated(authService.isAuthenticated());
+      const isAuth = authService.isAuthenticated();
+      setIsAuthenticated(isAuth);
+      if (isAuth) {
+        const userData = authService.getUser();
+        if (userData) {
+          setUser(userData);
+        }
+      }
     };
 
     // Initial check
     checkAuth();
 
     // Listen for storage changes (for cross-tab synchronization)
-    window.addEventListener('storage', checkAuth);
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'user' || e.key === 'token') {
+        checkAuth();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
     window.addEventListener('scroll', handleScroll);
 
+    // Add click outside handler
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsProfileOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+
     return () => {
-      window.removeEventListener('storage', checkAuth);
+      window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
 
   const handleLogout = () => {
     authService.logout();
     setIsAuthenticated(false);
+    setUser(null);
     navigate('/login');
   };
 
@@ -84,35 +112,38 @@ const Navbar: React.FC = () => {
                 </Link>
               </>
             ) : (
-              <div className="relative">
+              <div className="relative group" ref={dropdownRef}>
                 <button
-                  onClick={() => setShowMenu(!showMenu)}
-                  className="flex items-center focus:outline-none"
+                  onClick={() => setIsProfileOpen(!isProfileOpen)}
+                  className="flex items-center space-x-2 focus:outline-none"
                 >
-                  <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white font-semibold">
-                    U
-                  </div>
+                  <img
+                    src={user?.avatar_url || `https://placehold.co/400x400/e2e8f0/1e293b?text=${user?.user_id?.[0] || 'U'}`}
+                    alt="Profile"
+                    className="w-12 h-12 rounded-full object-cover border-2 border-purple-600"
+                  />
+                  <span className="text-gray-700 font-medium">{user?.user_id}</span>
                 </button>
                 
-                {showMenu && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
+                {isProfileOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
                     <Link
                       to="/profile"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      onClick={() => setShowMenu(false)}
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700"
+                      onClick={() => setIsProfileOpen(false)}
                     >
                       My Profile
                     </Link>
                     <Link
                       to="/security"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      onClick={() => setShowMenu(false)}
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700"
+                      onClick={() => setIsProfileOpen(false)}
                     >
                       Change Password
                     </Link>
                     <button
                       onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700"
                     >
                       Sign Out
                     </button>

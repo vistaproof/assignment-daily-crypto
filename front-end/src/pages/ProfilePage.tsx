@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
-import { User } from '../types/api';
+import { bookService } from '../services/bookService';
+import { User, Book } from '../types/api';
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
@@ -18,32 +19,31 @@ const ProfilePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<number | null>(null);
 
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      try {
-        const response = await authService.getUserProfile();
-        if (response.success && response.data) {
-          setUser(response.data);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch user profile');
-      } finally {
-        setLoading(false);
+  const fetchUserProfile = useCallback(async () => {
+    try {
+      const response = await authService.getUserProfile();
+      if (response.success && response.data) {
+        setUser(response.data);
       }
-    };
-
-    fetchUserProfile();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch user profile');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    fetchUserProfile();
+  }, [fetchUserProfile]);
+
   const validateImage = (file: File): boolean => {
-    // Check file type
     if (!file.type.startsWith('image/')) {
       setError('Please select an image file');
       return false;
     }
 
-    // Check file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       setError('Image size should be less than 5MB');
       return false;
@@ -65,25 +65,35 @@ const ProfilePage: React.FC = () => {
     setSuccess(false);
 
     try {
-      // Convert file to base64
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64String = reader.result as string;
         try {
-          console.log('Sending avatar update request...'); // Debug log
           const response = await authService.updateAvatar({
             avatar_url: base64String
           });
-          console.log('Avatar update response:', response); // Debug log
           
           if (response.success && response.data) {
-            setUser(response.data as User);
+            // Update user state
+            setUser(prevUser => ({
+              ...prevUser,
+              avatar_url: base64String
+            }));
+            
+            // Update localStorage
+            const currentUser = authService.getUser();
+            if (currentUser) {
+              const updatedUser = { ...currentUser, avatar_url: base64String };
+              localStorage.setItem('user', JSON.stringify(updatedUser));
+              // Trigger storage event to update Navbar
+              window.dispatchEvent(new Event('storage'));
+            }
+            
             setSuccess(true);
           } else {
             setError(response.message || 'Failed to update avatar');
           }
         } catch (err) {
-          console.error('Avatar update error:', err); // Debug log
           setError(err instanceof Error ? err.message : 'Failed to update avatar');
         } finally {
           setLoading(false);
@@ -91,11 +101,33 @@ const ProfilePage: React.FC = () => {
       };
       reader.readAsDataURL(file);
     } catch (err) {
-      console.error('File processing error:', err); // Debug log
       setError('Failed to process image file');
       setLoading(false);
     }
   };
+
+  const handleDeleteBook = useCallback(async (bookId: number) => {
+    if (!window.confirm('Are you sure you want to delete this book?')) {
+      return;
+    }
+
+    setIsDeleting(bookId);
+    setError(null);
+
+    try {
+      const response = await bookService.deleteBook(bookId);
+      if (response.success) {
+        // Refresh user profile to update the book list
+        await fetchUserProfile();
+      } else {
+        setError(response.message || 'Failed to delete book');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete book');
+    } finally {
+      setIsDeleting(null);
+    }
+  }, [fetchUserProfile]);
 
   if (loading) {
     return (
@@ -179,7 +211,7 @@ const ProfilePage: React.FC = () => {
           {user.books?.map((book) => (
             <div key={book.id} className="bg-white rounded-lg shadow-md overflow-hidden">
               <img
-                src={book.cover_image}
+                src={book.cover_image || `https://placehold.co/400x400/e2e8f0/1e293b?text=${encodeURIComponent(book.title)}`}
                 alt={book.title}
                 className="w-full h-48 object-cover"
               />
@@ -195,10 +227,11 @@ const ProfilePage: React.FC = () => {
                     Edit
                   </Link>
                   <button
-                    onClick={() => console.log('Remove book:', book.id)}
-                    className="flex-1 px-3 py-1 text-sm text-center text-red-600 border border-red-600 rounded hover:bg-red-50"
+                    onClick={() => handleDeleteBook(book.id)}
+                    disabled={isDeleting === book.id}
+                    className="flex-1 px-3 py-1 text-sm text-center text-red-600 border border-red-600 rounded hover:bg-red-50 disabled:opacity-50"
                   >
-                    Remove
+                    {isDeleting === book.id ? 'Deleting...' : 'Remove'}
                   </button>
                 </div>
               </div>

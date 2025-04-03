@@ -46,6 +46,8 @@ class AuthService {
 
     if (result.token) {
       localStorage.setItem('token', result.token);
+      // Store user information in localStorage
+      localStorage.setItem('user', JSON.stringify(result.user));
     }
 
     return result;
@@ -149,7 +151,12 @@ class AuthService {
   }
 
   isAuthenticated(): boolean {
-    return !!this.getToken();
+    return !!localStorage.getItem('token');
+  }
+
+  getUser(): User | null {
+    const userStr = localStorage.getItem('user');
+    return userStr ? JSON.parse(userStr) : null;
   }
 }
 

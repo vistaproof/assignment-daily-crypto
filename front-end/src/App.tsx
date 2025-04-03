@@ -24,8 +24,8 @@ function App() {
             <Route path="/security" element={<ChangePasswordPage />} />
             <Route path="/reset" element={<ResetPasswordPage />} />
             <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/details" element={<BookDetailPage />} />
-            <Route path="/book_edit" element={<BookEditPage />} />
+            <Route path="/book/:id" element={<BookDetailPage />} />
+            <Route path="/book_edit/:id" element={<BookEditPage />} />
             <Route path="/add_book" element={<AddBookPage />} />
           </Routes>
         </main>

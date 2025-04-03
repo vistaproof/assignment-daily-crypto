@@ -6,7 +6,10 @@ class BookService {
   async getGenres(): Promise<ApiResponse<Genre[]>> {
     try {
       const response = await api.get(API_ENDPOINTS.GENRES);
-      return response.data as ApiResponse<Genre[]>;
+      return {
+        success: true,
+        data: response.data as Genre[]
+      };
     } catch (error) {
       console.error('Error fetching genres:', error);
       throw error;
@@ -29,20 +32,40 @@ class BookService {
 
   async getBookById(id: number): Promise<ApiResponse<Book>> {
     try {
-      const response = await api.get(`${API_ENDPOINTS.BOOKS}/${id}`);
-      return response.data as ApiResponse<Book>;
+      const response = await api.get<ApiResponse<Book>>(API_ENDPOINTS.BOOK_DETAIL(id));
+      return response.data;
     } catch (error) {
       console.error('Error fetching book:', error);
       throw error;
     }
   }
 
-  async addBook(book: Omit<Book, 'id'>): Promise<ApiResponse<Book>> {
+  async createBook(book: Omit<Book, 'id'>): Promise<ApiResponse<Book>> {
     try {
       const response = await api.post(API_ENDPOINTS.BOOKS, book);
       return response.data as ApiResponse<Book>;
     } catch (error) {
-      console.error('Error adding book:', error);
+      console.error('Error creating book:', error);
+      throw error;
+    }
+  }
+
+  async updateBook(id: number, book: Partial<Book>): Promise<ApiResponse<Book>> {
+    try {
+      const response = await api.put(`${API_ENDPOINTS.BOOKS}/${id}`, book);
+      return response.data as ApiResponse<Book>;
+    } catch (error) {
+      console.error('Error updating book:', error);
+      throw error;
+    }
+  }
+
+  async deleteBook(id: number): Promise<ApiResponse<void>> {
+    try {
+      const response = await api.delete(`${API_ENDPOINTS.BOOKS}/${id}`);
+      return response.data as ApiResponse<void>;
+    } catch (error) {
+      console.error('Error deleting book:', error);
       throw error;
     }
   }
