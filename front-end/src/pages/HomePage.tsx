@@ -7,7 +7,7 @@ import { Book } from '../types/api';
 import { User } from '../types/api';
 
 // Cache for search results
-const searchCache: Record<string, Book[]> = {};
+// const searchCache: Record<string, Book[]> = {};
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();

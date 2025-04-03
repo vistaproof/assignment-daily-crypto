@@ -13,17 +13,14 @@ const RegisterPage: React.FC = () => {
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     const checkAuth = () => {
       const isAuth = authService.isAuthenticated();
-      setIsAuthenticated(isAuth);
       if (isAuth) {
         navigate('/profile');
       }
     };
-
     checkAuth();
   }, [navigate]);
 
