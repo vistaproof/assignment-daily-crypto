@@ -46,7 +46,7 @@ export const getAllBooks = async (req: Request, res: Response): Promise<void> =>
       sortBy = 'title',
       sortOrder = 'asc',
       page = 1,
-      limit = 10
+      limit = 12
     } = req.query;
 
     let query = `

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
 import { bookService } from '../services/bookService';
 import { User, Book } from '../types/api';
+import { Helmet } from 'react-helmet';
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
@@ -20,6 +21,27 @@ const ProfilePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const booksPerPage = 8;
+
+  // Calculate total pages
+  const totalBooks = user.books?.length || 0;
+  const totalPages = Math.max(1, Math.ceil(totalBooks / booksPerPage));
+
+  // Get current books for the page
+  const indexOfLastBook = currentPage * booksPerPage;
+  const indexOfFirstBook = indexOfLastBook - booksPerPage;
+  const currentBooks = user.books?.slice(indexOfFirstBook, indexOfLastBook) || [];
+
+  const handlePageChange = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Reset to first page when books array changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [user.books?.length]);
 
   const fetchUserProfile = useCallback(async () => {
     try {
@@ -129,114 +151,194 @@ const ProfilePage: React.FC = () => {
     }
   }, [fetchUserProfile]);
 
+  const handleLogout = () => {
+    authService.logout();
+    navigate('/login');
+  };
+
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-600"></div>
+      <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-white"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-red-600 mb-4">Error</h2>
+            <p className="text-gray-600">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <h1 className="text-3xl font-bold text-purple-600 mb-8">My Profile</h1>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 py-12 px-4 sm:px-6 lg:px-8">
+      <Helmet>
+        <title>Profile - Book Collection</title>
+        <meta name="description" content="View and manage your profile" />
+      </Helmet>
 
-      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-        <div className="flex items-start space-x-6">
-          <div className="relative group">
-            <img
-              src={user.avatar_url}
-              alt="Profile"
-              className="w-32 h-32 rounded-lg object-cover"
-            />
-            <div className="absolute inset-0 bg-black bg-opacity-50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-              <label className="cursor-pointer">
-                <input
-                  type="file"
-                  className="hidden"
-                  accept="image/*"
-                  onChange={handleAvatarChange}
-                  disabled={loading}
-                />
-                <span className="text-white text-sm">
-                  {loading ? 'Updating...' : 'Change Avatar'}
+      <div className="max-w-7xl mx-auto">
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl overflow-hidden">
+          <div className="p-8">
+            <div className="text-center mb-8">
+              <div className="w-24 h-24 mx-auto bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full flex items-center justify-center mb-4 shadow-lg">
+                <span className="text-3xl font-bold text-white">
+                  {user.user_id?.charAt(0).toUpperCase() || 'U'}
                 </span>
-              </label>
+              </div>
+              <h2 className="text-3xl font-bold text-gray-900">{user.user_id}</h2>
+              <p className="text-gray-600 mt-2">{user.email}</p>
             </div>
-          </div>
 
-          <div className="flex-1">
-            <div className="mb-4">
-              <p className="text-sm text-gray-500">Username</p>
-              <p className="text-lg">{user.user_id}</p>
-            </div>
-            <div className="mb-4">
-              <p className="text-sm text-gray-500">Email</p>
-              <p className="text-lg">{user.email}</p>
-            </div>
-            <Link
-              to="/security"
-              className="inline-block px-4 py-2 text-sm text-purple-600 border border-purple-600 rounded-md hover:bg-purple-50"
-            >
-              Change Password
-            </Link>
-          </div>
-        </div>
-
-        {error && (
-          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-sm text-red-600">{error}</p>
-          </div>
-        )}
-
-        {success && (
-          <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-md">
-            <p className="text-sm text-green-600">Avatar updated successfully!</p>
-          </div>
-        )}
-      </div>
-
-      <div className="mb-8">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">My Book Collection</h2>
-          <Link
-            to="/add_book"
-            className="px-4 py-2 text-sm text-white bg-purple-600 rounded-md hover:bg-purple-700"
-          >
-            Add Book
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {user.books?.map((book) => (
-            <div key={book.id} className="bg-white rounded-lg shadow-md overflow-hidden">
-              <img
-                src={book.cover_image || `https://placehold.co/400x400/e2e8f0/1e293b?text=${encodeURIComponent(book.title)}`}
-                alt={book.title}
-                className="w-full h-48 object-cover"
-              />
-              <div className="p-4">
-                <h3 className="font-semibold text-gray-900">{book.title}</h3>
-                <p className="text-sm text-gray-600">{book.author}</p>
-                <p className="text-sm text-gray-500 mt-1">{book.genre_name}</p>
-                <div className="mt-4 flex space-x-2">
-                  <Link
-                    to={`/book_edit/${book.id}`}
-                    className="flex-1 px-3 py-1 text-sm text-center text-purple-600 border border-purple-600 rounded hover:bg-purple-50"
-                  >
-                    Edit
-                  </Link>
-                  <button
-                    onClick={() => handleDeleteBook(book.id)}
-                    disabled={isDeleting === book.id}
-                    className="flex-1 px-3 py-1 text-sm text-center text-red-600 border border-red-600 rounded hover:bg-red-50 disabled:opacity-50"
-                  >
-                    {isDeleting === book.id ? 'Deleting...' : 'Remove'}
-                  </button>
+            <div className="space-y-6">
+              <div className="bg-gray-50/80 backdrop-blur-sm rounded-lg p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Account Information</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Username</label>
+                    <p className="mt-1 text-gray-900">{user.user_id}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Email</label>
+                    <p className="mt-1 text-gray-900">{user.email}</p>
+                  </div>
                 </div>
               </div>
+
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button
+                  onClick={() => navigate('/security')}
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-300 shadow-md hover:shadow-lg"
+                >
+                  Change Password
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="flex-1 px-4 py-3 bg-white border-2 border-red-500 text-red-500 rounded-lg hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-300"
+                >
+                  Logout
+                </button>
+              </div>
             </div>
-          ))}
+          </div>
+        </div>
+
+        {/* Book Collection Section */}
+        <div className="mt-8">
+          <h2 className="text-2xl font-bold text-white mb-6">My Book Collection</h2>
+          {user.books && user.books.length > 0 ? (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {currentBooks.map((book) => (
+                  <div key={book.id} className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden transform transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+                    <div className="aspect-w-3 aspect-h-4 relative group">
+                      <img
+                        src={book.cover_image || `https://placehold.co/400x400/e2e8f0/1e293b?text=${encodeURIComponent(book.title)}`}
+                        alt={book.title}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300"></div>
+                    </div>
+                    <div className="p-4">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-1 truncate">{book.title}</h3>
+                      <p className="text-sm text-gray-600 mb-2">{book.author}</p>
+                      <div className="flex justify-between items-center">
+                        <span className="inline-block px-2 py-1 bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-800 rounded-full text-xs font-medium">
+                          {book.genre_name}
+                        </span>
+                        <div className="flex space-x-2">
+                          <Link
+                            to={`/book/${book.id}`}
+                            className="p-2 text-indigo-600 hover:text-indigo-700 transition-colors duration-200"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                          </Link>
+                          <Link
+                            to={`/book_edit/${book.id}`}
+                            className="p-2 text-indigo-600 hover:text-indigo-700 transition-colors duration-200"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </Link>
+                          <button
+                            onClick={() => handleDeleteBook(book.id)}
+                            disabled={isDeleting === book.id}
+                            className="p-2 text-red-600 hover:text-red-700 transition-colors duration-200 disabled:opacity-50"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="mt-8 flex justify-center items-center space-x-2">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 text-sm font-medium text-white bg-white/10 rounded-lg hover:bg-white/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => handlePageChange(page)}
+                      className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${
+                        currentPage === page
+                          ? 'bg-white text-indigo-600'
+                          : 'text-white bg-white/10 hover:bg-white/20'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="px-4 py-2 text-sm font-medium text-white bg-white/10 rounded-lg hover:bg-white/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl p-8 text-center">
+              <p className="text-gray-600">You haven't added any books to your collection yet.</p>
+              <Link
+                to="/add_book"
+                className="mt-4 inline-block px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg"
+              >
+                Add Your First Book
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </div>
