@@ -310,23 +310,54 @@ export const deleteBook = async (req: IAuthRequest, res: Response): Promise<void
 
 export const getBooks = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { search } = req.query;
-    let query = 'SELECT b.*, g.name as genre_name FROM books b LEFT JOIN genres g ON b.genre_id = g.id';
+    const { 
+      search,
+      page = 1,
+      limit = 12
+    } = req.query;
+    
+    // Base query parts
+    const fromClause = 'FROM books b LEFT JOIN genres g ON b.genre_id = g.id';
     const params: any[] = [];
-
+    let paramCount = 1;
+    
+    // Build WHERE clause for search
+    let whereClause = '';
     if (search) {
-      // Optimized search query with ILIKE for case-insensitive search
-      query += ' WHERE LOWER(b.title) LIKE LOWER($1) OR LOWER(b.author) LIKE LOWER($1)';
+      whereClause = ' WHERE LOWER(b.title) LIKE LOWER($1) OR LOWER(b.author) LIKE LOWER($1)';
       params.push(`%${search}%`);
-      
-      // Add index hint if available
-      query += ' /*+ INDEX(b idx_books_title_author) */';
+      paramCount++;
     }
-
-    query += ' ORDER BY b.created_at DESC LIMIT 50'; // Limit results for faster response
-
-    const result = await pool.query(query, params);
-    res.json({ success: true, data: result.rows });
+    
+    // Get total count for pagination
+    const countQuery = `SELECT COUNT(*) ${fromClause}${whereClause}`;
+    const countResult = await pool.query(countQuery, params);
+    const totalCount = parseInt(countResult.rows[0].count);
+    
+    // Build the main query with pagination
+    const selectClause = 'SELECT b.*, g.name as genre_name';
+    const orderClause = ' ORDER BY b.created_at DESC';
+    
+    // Add pagination
+    const offset = (Number(page) - 1) * Number(limit);
+    const paginationClause = ` LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+    params.push(Number(limit), offset);
+    
+    // Combine all parts for the final query
+    const mainQuery = `${selectClause} ${fromClause}${whereClause}${orderClause}${paginationClause}`;
+    
+    // Execute the query
+    const result = await pool.query(mainQuery, params);
+    
+    // Return the results with pagination info
+    res.json({ 
+      success: true, 
+      count: totalCount,
+      data: result.rows,
+      page: Number(page),
+      limit: Number(limit),
+      totalPages: Math.ceil(totalCount / Number(limit))
+    });
   } catch (error) {
     console.error('Error fetching books:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch books' });
