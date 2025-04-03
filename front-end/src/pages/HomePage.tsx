@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet';
 import { bookService } from '../services/bookService';
 import { authService } from '../services/authService';
 import { Book } from '../types/api';
+import { User } from '../types/api';
 
 // Cache for search results
 const searchCache: Record<string, Book[]> = {};
@@ -18,10 +19,16 @@ const HomePage: React.FC = () => {
   const [searchResults, setSearchResults] = useState<Book[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   useEffect(() => {
     const checkAuth = () => {
-      setIsAuthenticated(authService.isAuthenticated());
+      const isAuth = authService.isAuthenticated();
+      setIsAuthenticated(isAuth);
+      if (isAuth) {
+        const user = authService.getUser();
+        setCurrentUser(user);
+      }
     };
 
     const fetchBooks = async () => {
@@ -45,7 +52,7 @@ const HomePage: React.FC = () => {
     navigate(`/book/${bookId}`);
   };
 
-  const handleDeleteBook = useCallback(async (bookId: number) => {
+  const handleDeleteBook = async (bookId: number) => {
     if (!window.confirm('Are you sure you want to delete this book?')) {
       return;
     }
@@ -56,9 +63,15 @@ const HomePage: React.FC = () => {
     try {
       const response = await bookService.deleteBook(bookId);
       if (response.success) {
-        // Update the books list
-        setBooks(prevBooks => prevBooks.filter(book => book.id !== bookId));
-        setSearchResults(prevResults => prevResults.filter(book => book.id !== bookId));
+        // Refresh the book list
+        const updatedBooks = books.filter(book => book.id !== bookId);
+        setBooks(updatedBooks);
+        
+        // Also update search results if the deleted book was in them
+        if (searchResults.length > 0) {
+          const updatedSearchResults = searchResults.filter(book => book.id !== bookId);
+          setSearchResults(updatedSearchResults);
+        }
       } else {
         setError(response.message || 'Failed to delete book');
       }
@@ -67,7 +80,7 @@ const HomePage: React.FC = () => {
     } finally {
       setIsDeleting(null);
     }
-  }, []);
+  };
 
   // Memoized search function
   const performSearch = useCallback(async (query: string) => {
@@ -230,7 +243,7 @@ const HomePage: React.FC = () => {
                     >
                       Read More
                     </button>
-                    {isAuthenticated && (
+                    {isAuthenticated && currentUser && currentUser.id === book.user_id && (
                       <>
                         <Link
                           to={`/book_edit/${book.id}`}
