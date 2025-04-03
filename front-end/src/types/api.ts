@@ -19,9 +19,9 @@ export interface Book {
   cover_image: string;
   genre_id: number;
   genre_name: string;
-  user_id: number;
-  created_at: string;
-  updated_at: string;
+  user_id?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface ApiResponse<T> {
@@ -52,8 +52,6 @@ export interface RegisterData {
 export interface BookFilters {
   search?: string;
   author?: string;
-  minPrice?: number;
-  maxPrice?: number;
   genre?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';

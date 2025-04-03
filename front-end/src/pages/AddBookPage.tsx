@@ -3,41 +3,53 @@ import { useNavigate } from 'react-router-dom';
 import { bookService } from '../services/bookService';
 import { Book, Genre } from '../types/api';
 
+interface FormData {
+  title: string;
+  author: string;
+  description: string;
+  isbn: string;
+  published_date: string;
+  cover_image: string;
+  genre_id: number;
+  genre_name: string;
+}
+
+const initialForm: FormData = {
+  title: '',
+  author: '',
+  description: '',
+  isbn: '',
+  published_date: '',
+  cover_image: '',
+  genre_id: 0,
+  genre_name: ''
+};
+
 const AddBookPage: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [genres, setGenres] = useState<Genre[]>([]);
-  const [formData, setFormData] = useState<Partial<Book>>({
-    title: '',
-    author: '',
-    description: '',
-    isbn: '',
-    published_date: '',
-    cover_image: '',
-    genre_id: 1,
-    genre_name: ''
-  });
+  const [formData, setFormData] = useState<FormData>(initialForm);
 
   useEffect(() => {
     const fetchGenres = async () => {
       try {
         const response = await bookService.getGenres();
         if (response.success && response.data) {
-          const genresData = response.data as Genre[];
-          setGenres(genresData);
+          setGenres(response.data);
           // Set initial genre if available
-          if (genresData.length > 0) {
+          if (response.data.length > 0) {
             setFormData(prev => ({
               ...prev,
-              genre_id: genresData[0].id,
-              genre_name: genresData[0].name
+              genre_id: (response.data as Genre[])[0].id,
+              genre_name: (response.data as Genre[])[0].name
             }));
           }
         }
       } catch (err) {
-        setError('Failed to load genres. Please try again later.');
+        console.error('Error fetching genres:', err);
       }
     };
 
@@ -45,13 +57,11 @@ const AddBookPage: React.FC = () => {
   }, []);
 
   const validateImage = (file: File): boolean => {
-    // Check file type
     if (!file.type.startsWith('image/')) {
       setError('Please select an image file');
       return false;
     }
 
-    // Check file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       setError('Image size should be less than 5MB');
       return false;
@@ -72,7 +82,6 @@ const AddBookPage: React.FC = () => {
     setError(null);
 
     try {
-      // Convert file to base64
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64String = reader.result as string;
@@ -96,7 +105,7 @@ const AddBookPage: React.FC = () => {
     setSuccess(false);
 
     try {
-      const response = await bookService.addBook(formData as Book);
+      const response = await bookService.createBook(formData);
       if (response.success) {
         setSuccess(true);
         setTimeout(() => {
@@ -114,13 +123,15 @@ const AddBookPage: React.FC = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    if (name === 'genre_id') {
-      const selectedGenre = genres.find(g => g.id === Number(value));
-      setFormData(prev => ({
-        ...prev,
-        genre_id: Number(value),
-        genre_name: selectedGenre?.name || ''
-      }));
+    if (name === 'genre_name') {
+      const selectedGenre = genres.find(genre => genre.name === value);
+      if (selectedGenre) {
+        setFormData(prev => ({
+          ...prev,
+          genre_id: selectedGenre.id,
+          genre_name: selectedGenre.name
+        }));
+      }
     } else {
       setFormData(prev => ({
         ...prev,
@@ -139,6 +150,18 @@ const AddBookPage: React.FC = () => {
               Fill in the details below to add a new book to your collection.
             </p>
           </div>
+
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+          )}
+
+          {success && (
+            <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-md">
+              <p className="text-sm text-green-600">Book added successfully!</p>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
@@ -205,6 +228,26 @@ const AddBookPage: React.FC = () => {
             </div>
 
             <div>
+              <label htmlFor="genre_name" className="block text-sm font-medium text-gray-700">
+                Genre
+              </label>
+              <select
+                id="genre_name"
+                name="genre_name"
+                value={formData.genre_name}
+                onChange={handleChange}
+                required
+                className="mt-1 block w-full px-4 py-3 rounded-lg border border-gray-300 shadow-sm focus:border-purple-500 focus:ring-4 focus:ring-purple-100 focus:ring-offset-0 sm:text-sm transition-colors duration-200"
+              >
+                {genres.map((genre) => (
+                  <option key={genre.id} value={genre.name}>
+                    {genre.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
               <label htmlFor="description" className="block text-sm font-medium text-gray-700">
                 Description
               </label>
@@ -245,42 +288,10 @@ const AddBookPage: React.FC = () => {
               </div>
             </div>
 
-            <div>
-              <label htmlFor="genre_id" className="block text-sm font-medium text-gray-700">
-                Genre
-              </label>
-              <select
-                id="genre_id"
-                name="genre_id"
-                value={formData.genre_id}
-                onChange={handleChange}
-                required
-                className="mt-1 block w-full px-4 py-3 rounded-lg border border-gray-300 shadow-sm focus:border-purple-500 focus:ring-4 focus:ring-purple-100 focus:ring-offset-0 sm:text-sm transition-colors duration-200"
-              >
-                {genres.map(genre => (
-                  <option key={genre.id} value={genre.id}>
-                    {genre.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {error && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-sm text-red-600">{error}</p>
-              </div>
-            )}
-
-            {success && (
-              <div className="p-4 bg-green-50 border border-green-200 rounded-md">
-                <p className="text-sm text-green-600">Book added successfully!</p>
-              </div>
-            )}
-
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 px-4 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 px-4 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50"
             >
               {loading ? 'Adding...' : 'Add Book'}
             </button>

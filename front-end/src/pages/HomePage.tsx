@@ -17,6 +17,7 @@ const HomePage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Book[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<number | null>(null);
 
   useEffect(() => {
     const checkAuth = () => {
@@ -41,8 +42,32 @@ const HomePage: React.FC = () => {
   }, []);
 
   const handleBookClick = (bookId: number) => {
-    navigate('/details', { state: { bookId } });
+    navigate(`/book/${bookId}`);
   };
+
+  const handleDeleteBook = useCallback(async (bookId: number) => {
+    if (!window.confirm('Are you sure you want to delete this book?')) {
+      return;
+    }
+
+    setIsDeleting(bookId);
+    setError(null);
+
+    try {
+      const response = await bookService.deleteBook(bookId);
+      if (response.success) {
+        // Update the books list
+        setBooks(prevBooks => prevBooks.filter(book => book.id !== bookId));
+        setSearchResults(prevResults => prevResults.filter(book => book.id !== bookId));
+      } else {
+        setError(response.message || 'Failed to delete book');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete book');
+    } finally {
+      setIsDeleting(null);
+    }
+  }, []);
 
   // Memoized search function
   const performSearch = useCallback(async (query: string) => {
@@ -189,7 +214,7 @@ const HomePage: React.FC = () => {
                   className="relative pb-[100%] overflow-hidden w-full text-left focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 rounded-t-lg"
                 >
                   <img
-                    src={`https://placehold.co/400x400/e2e8f0/1e293b?text=${encodeURIComponent(book.title)}`}
+                    src={book.cover_image || `https://placehold.co/400x400/e2e8f0/1e293b?text=${encodeURIComponent(book.title)}`}
                     alt={book.title}
                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-200 hover:scale-105"
                   />
@@ -198,12 +223,31 @@ const HomePage: React.FC = () => {
                   <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2">{book.title}</h3>
                   <p className="text-sm text-gray-600 mb-2">{book.author}</p>
                   <p className="text-sm text-gray-500 mb-2">{book.genre_name}</p>
-                  <button
-                    onClick={() => handleBookClick(book.id)}
-                    className="mt-auto text-sm text-purple-600 hover:text-purple-700 font-medium text-left"
-                  >
-                    Read More
-                  </button>
+                  <div className="mt-auto flex space-x-2">
+                    <button
+                      onClick={() => handleBookClick(book.id)}
+                      className="flex-1 text-sm text-purple-600 hover:text-purple-700 font-medium text-left"
+                    >
+                      Read More
+                    </button>
+                    {isAuthenticated && (
+                      <>
+                        <Link
+                          to={`/book_edit/${book.id}`}
+                          className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+                        >
+                          Edit
+                        </Link>
+                        <button
+                          onClick={() => handleDeleteBook(book.id)}
+                          disabled={isDeleting === book.id}
+                          className="text-sm text-red-600 hover:text-red-700 font-medium disabled:opacity-50"
+                        >
+                          {isDeleting === book.id ? 'Deleting...' : 'Remove'}
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
