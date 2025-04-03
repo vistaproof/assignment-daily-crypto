@@ -1,87 +1,126 @@
-# Book Management API
+# Book Collection Application
 
-A RESTful API for managing books, built with Node.js, Express, TypeScript, and MongoDB.
+A full-stack application for managing a book collection, built with React, TypeScript, Express, and PostgreSQL.
 
 ## Features
 
-- User authentication with JWT
-- CRUD operations for books
-- TypeScript support
-- MongoDB integration
+- User authentication (login/register)
+- Book management (add, edit, delete)
+- Search functionality with pagination
+- Responsive design
+- Genre categorization
 
 ## Prerequisites
 
 - Node.js (v14 or higher)
-- MongoDB (v4.4 or higher)
 - npm or yarn
+- PostgreSQL database
 
-## Installation
+## Project Structure
 
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd book-management-api
 ```
+/
+├── front-end/         # React frontend application
+├── back-end/          # Express backend API
+└── README.md          # This file
+```
+
+## Setup Instructions
+
+### Backend Setup
+
+1. Navigate to the backend directory:
+   ```
+   cd back-end
+   ```
 
 2. Install dependencies:
-```bash
-npm install
-```
+   ```
+   npm install
+   ```
 
-3. Create a `.env` file in the root directory and add the following variables:
-```
-PORT=5000
-MONGODB_URI=mongodb://localhost:27017/bookstore
-JWT_SECRET=your_jwt_secret_key_here
-JWT_EXPIRE=30d
-```
+3. Create a `.env` file in the back-end directory with the following variables:
+   ```
+   PORT=5000
+   DB_HOST=localhost
+   DB_USER=your_postgres_username
+   DB_PASSWORD=your_postgres_password
+   DB_NAME=book_collection
+   JWT_SECRET=your_jwt_secret
+   ```
+
+4. Set up the PostgreSQL database:
+   - Create a database named `book_collection`
+   - The tables will be created automatically when the application starts
+
+5. Start the backend server:
+   ```
+   npm start
+   ```
+   or for development with auto-reload:
+   ```
+   npm run dev
+   ```
+
+### Frontend Setup
+
+1. Navigate to the frontend directory:
+   ```
+   cd front-end
+   ```
+
+2. Install dependencies:
+   ```
+   npm install
+   ```
+
+3. Create a `.env` file in the front-end directory with the following variables:
+   ```
+   REACT_APP_API_URL=http://localhost:5000/api
+   ```
+
+4. Start the frontend development server:
+   ```
+   npm start
+   ```
 
 ## Running the Application
 
-### Development Mode
-```bash
-npm run dev
-```
-
-### Production Mode
-```bash
-npm run build
-npm start
-```
+1. Make sure both the backend and frontend servers are running
+2. Open your browser and navigate to `http://localhost:3000`
+3. Register a new account or log in with existing credentials
+4. Start managing your book collection!
 
 ## API Endpoints
 
-### Public Endpoints
+### Authentication
+- `POST /api/auth/register` - Register a new user
+- `POST /api/auth/login` - Login a user
+- `GET /api/auth/me` - Get current user information
 
-- `GET /api/books` - Get all books
+### Books
+- `GET /api/books` - Get all books (with pagination and search)
 - `GET /api/books/:id` - Get a specific book
-- `POST /api/users/register` - Register a new user
-
-### Protected Endpoints (Requires Authentication)
-
 - `POST /api/books` - Create a new book
 - `PUT /api/books/:id` - Update a book
 - `DELETE /api/books/:id` - Delete a book
-- `POST /api/users/change-password` - Change user password
 
-## Authentication
+### Genres
+- `GET /api/genres` - Get all genres
 
-The API uses JWT (JSON Web Tokens) for authentication. To access protected endpoints:
+## Technologies Used
 
-1. Register a user using the `/api/users/register` endpoint
-2. Login to get a JWT token
-3. Include the token in the Authorization header:
-```
-Authorization: Bearer <your_jwt_token>
-```
+- **Frontend**: React, TypeScript, Tailwind CSS
+- **Backend**: Node.js, Express, TypeScript
+- **Database**: PostgreSQL
+- **Authentication**: JWT
 
-## Testing
+## Troubleshooting
 
-Run tests using:
-```bash
-npm test
-```
+- If you encounter database connection issues, make sure PostgreSQL is running and the credentials in the `.env` file are correct.
+- If the frontend can't connect to the backend, check that both servers are running and the API URL in the frontend `.env` file is correct.
+- For any other issues, check the console logs in both the frontend and backend terminals.
 
 ## License
 
-MIT
+This project is licensed under the MIT License.
